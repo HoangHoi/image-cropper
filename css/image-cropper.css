@@ -1,0 +1,28 @@
+.image-cropper-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-cropper-container .image-view {
+    width: 200px;
+    height: 200px;
+    border: solid #e4c4c4 1px;
+    background-position: center;
+    background-size: 100%;
+    background-repeat: no-repeat;
+}
+
+.image-cropper-container .file-label {
+    cursor: pointer;
+    margin-top: 15px;
+    padding: 10px;
+    background-color: green;
+    color: white;
+    box-shadow: #000 1px 1px 5px;
+}
+
+.image-cropper-container .file-input {
+    display: none;
+}
