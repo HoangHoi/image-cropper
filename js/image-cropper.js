@@ -45,11 +45,16 @@ window.ImageCropper = (function () {
         var inputElement = document.getElementById(instance.inputId);
         var onChangeFile = function (event) {
             var files = event.target.files;
-            instance.file = files.length > 0 ? files[0] : null;
-            getOrientation(instance.file, function (orientation) {
-                instance.imageOptions.orientation = orientation;
-                changeImage(instance);
-            });
+            if (files.length > 0) {
+                instance.file = files[0];
+                getOrientation(instance.file, function (orientation) {
+                    instance.imageOptions.orientation = orientation;
+                    changeImage(instance);
+                });
+            } else {
+                instance.file = null;
+                setImageToView(instance, '');
+            }
         };
         instance.events.push({
             elementId: instance.inputId,
