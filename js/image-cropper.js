@@ -1,10 +1,13 @@
 window.ImageCropper = (function () {
     const DEFAULT_OPTIONS = {
         width: 200,
-        height: 200
+        height: 200,
+        zoomMax: 5,
+        zoomStep: 0.1
     };
     const IC_PREFIX = 'ic-';
     const IC_VIEW_PREFIX = 'ic-view-';
+    const WHEEL_STEP = 53;
 
     const TEMPLATE = '<div class="image-cropper-container" id="@%icId%@">' +
         '<div class="image-view" id="@%icViewId%@" style="width: @%width%@px;height: @%height%@px;"></div>' +
@@ -43,8 +46,8 @@ window.ImageCropper = (function () {
             if (event.buttons == 1) {
                 var positionX = element.style.backgroundPositionX;
                 var positionY = element.style.backgroundPositionY;
-                var x = parseInt(positionX) + event.movementX;
-                var y = parseInt(positionY) + event.movementY;
+                var x = parseFloat(positionX) + event.movementX;
+                var y = parseFloat(positionY) + event.movementY;
 
                 var imageBoxWidth = instance.options.width;
                 var imageBoxHeight = instance.options.height;
@@ -65,8 +68,40 @@ window.ImageCropper = (function () {
 
         var handleMouseScrollWheel = function(event) {
             if (event.ctrlKey) {
+                var zoomDelta = (event.deltaY * instance.options.zoomStep) / WHEEL_STEP;
+                instance.imageOptions.position.zoom = instance.imageOptions.position.zoom - zoomDelta;
+                if (instance.imageOptions.position.zoom < instance.imageOptions.zoomMin) {
+                    instance.imageOptions.position.zoom = instance.imageOptions.zoomMin;
+                }
+                if (instance.imageOptions.position.zoom > instance.imageOptions.zoomMax) {
+                    instance.imageOptions.position.zoom = instance.imageOptions.zoomMax;
+                }
 
+                var newWidth = instance.imageOptions.originWidth * instance.imageOptions.position.zoom;
+                var newHeight = instance.imageOptions.originHeight * instance.imageOptions.position.zoom;
+                var boxWidth = instance.options.width;
+                var boxHeight = instance.options.height;
 
+                instance.imageOptions.position.x = -((-instance.imageOptions.position.x + boxWidth/2) * (newWidth / instance.imageOptions.position.width) - boxHeight/2);
+                instance.imageOptions.position.y = -((-instance.imageOptions.position.y + boxHeight/2) * (newHeight / instance.imageOptions.position.height) - boxHeight/2);
+                instance.imageOptions.position.width = newWidth;
+                instance.imageOptions.position.height = newHeight;
+
+                if (instance.imageOptions.position.x > 0) {
+                    instance.imageOptions.position.x = 0;
+                }
+                if (instance.imageOptions.position.x < (instance.options.width - instance.imageOptions.position.width)) {
+                    instance.imageOptions.position.x = (instance.options.width - instance.imageOptions.position.width);
+                }
+                if (instance.imageOptions.position.y > 0) {
+                    instance.imageOptions.position.y = 0;
+                }
+                if (instance.imageOptions.position.y < (instance.options.height - instance.imageOptions.position.height)) {
+                    instance.imageOptions.position.y = (instance.options.height - instance.imageOptions.position.height);
+                }
+
+                updateImagePosition(element, instance.imageOptions.position);
+                updateImageSize(element, instance.imageOptions.position);
                 event.preventDefault();
             }
         };
@@ -180,7 +215,8 @@ window.ImageCropper = (function () {
 
             instance.imageOptions.position.x = 0;
             instance.imageOptions.position.y = 0;
-            instance.imageOptions.position.zoom = instance.imageOptions.position.width / width;
+            instance.imageOptions.zoomMin = instance.imageOptions.position.width / width;
+            instance.imageOptions.position.zoom = instance.imageOptions.zoomMin;
 
             setImageToView(instance, canvas.toDataURL());
         };
@@ -263,11 +299,34 @@ window.ImageCropper = (function () {
         };
     }
 
+    function getImageCroped() {
+
+    }
+
+    function handleCropImage(instance) {
+        var img = new Image;
+        var imgElement = document.getElementById(IC_VIEW_PREFIX + instance.inputId);
+        var style = imgElement.currentStyle || window.getComputedStyle(imgElement, false);
+        var bi = style.backgroundImage.slice(4, -1).replace(/"/g, "");
+        img.onload = function () {
+            var cropCanvas = document.createElement('canvas');
+            var ctx = cropCanvas.getContext('2d');
+            cropCanvas.width = instance.options.width;
+            cropCanvas.height = instance.options.height;
+            ctx.drawImage(img, instance.imageOptions.position.x, instance.imageOptions.position.y, instance.imageOptions.position.width, instance.imageOptions.position.height);
+            var dataURL = cropCanvas.toDataURL();
+            var element = document.getElementById('output');
+            element.style.backgroundImage = "url('" + dataURL + "')";
+        };
+        img.src = bi;
+    }
+
     function makeImageOptions() {
         return {
             orientation: 1,
             originWidth: 0,
             originHeight: 0,
+            zoomMin: 1,
             position: {
                 x: 0,
                 y: 0,
@@ -300,9 +359,9 @@ window.ImageCropper = (function () {
         return instance;
     }
 
-
     return {
         replace: replace,
         instances: instances,
+        handleCropImage: handleCropImage
     };
 }());
