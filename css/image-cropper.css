@@ -10,7 +10,7 @@
     height: 200px;
     border: solid #e4c4c4 1px;
     background-position: center;
-    background-size: 100%;
+    /* background-size: 100%; */
     background-repeat: no-repeat;
 }
 

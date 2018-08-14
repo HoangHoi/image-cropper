@@ -27,18 +27,68 @@ window.ImageCropper = (function () {
     }
 
     function replaceOptions(options = {}) {
-        var newOptions = {};
-        Object.keys(DEFAULT_OPTIONS).forEach(function(key) {
-            newOptions[key] = options[key] ? options[key] : DEFAULT_OPTIONS[key];
-        });
-
-        return newOptions;
+        return Object.assign({}, DEFAULT_OPTIONS, options);
     }
 
     function addEvents(instance) {
         addImageChangeEvents(instance);
+        addMouseEventsToInstance(instance);
 
         // console.log(inputElement.closest('form'));
+    }
+
+    function addMouseEventsToInstance(instance) {
+        var element = document.getElementById(IC_VIEW_PREFIX + instance.inputId);
+        var handleMouseMoveEvent = function(event) {
+            if (event.buttons == 1) {
+                var positionX = element.style.backgroundPositionX;
+                var positionY = element.style.backgroundPositionY;
+                var x = parseInt(positionX) + event.movementX;
+                var y = parseInt(positionY) + event.movementY;
+
+                var imageBoxWidth = instance.options.width;
+                var imageBoxHeight = instance.options.height;
+
+                if (typeof x === 'number' && x <= 0 && x >= (imageBoxWidth - instance.imageOptions.position.width)) {
+                    instance.imageOptions.position.x = x;
+                }
+
+                if (typeof y === 'number' && y <= 0 && y >= (imageBoxHeight - instance.imageOptions.position.height)) {
+                    instance.imageOptions.position.y = y;
+                }
+
+                updateImagePosition(element, instance.imageOptions.position);
+            }
+
+            event.preventDefault();
+        };
+
+        var handleMouseScrollWheel = function(event) {
+            if (event.ctrlKey) {
+
+
+                event.preventDefault();
+            }
+        };
+
+        instance.addResizeImageEvents = function () {
+            element.addEventListener('mousemove', handleMouseMoveEvent, true);
+            element.addEventListener('wheel', handleMouseScrollWheel, true);
+        };
+
+        instance.removeResizeImageEvents = function () {
+            element.removeEventListener('mousemove', handleMouseMoveEvent, true);
+            element.removeEventListener('wheel', handleMouseScrollWheel, true);
+        };
+    }
+
+    function updateImagePosition(element, imagePosition) {
+        element.style.backgroundPositionX = imagePosition.x + 'px';
+        element.style.backgroundPositionY = imagePosition.y + 'px';
+    }
+
+    function updateImageSize(element, imagePosition) {
+        element.style.backgroundSize = imagePosition.width + 'px ' + imagePosition.height + 'px';
     }
 
     function addImageChangeEvents(instance) {
@@ -117,6 +167,21 @@ window.ImageCropper = (function () {
             instance.imageOptions.originWidth = width;
             instance.imageOptions.originHeight = height;
 
+            var viewWidth = instance.options.width;
+            var viewHeight = instance.options.height;
+
+            if (width/height > viewWidth/viewHeight) {
+                instance.imageOptions.position.height = viewHeight;
+                instance.imageOptions.position.width = (viewHeight * width) / height;
+            } else {
+                instance.imageOptions.position.width = viewWidth;
+                instance.imageOptions.position.height = (viewWidth * height) / width;
+            }
+
+            instance.imageOptions.position.x = 0;
+            instance.imageOptions.position.y = 0;
+            instance.imageOptions.position.zoom = instance.imageOptions.position.width / width;
+
             setImageToView(instance, canvas.toDataURL());
         };
 
@@ -159,10 +224,20 @@ window.ImageCropper = (function () {
     function setImageToView(instance, data) {
         var element = document.getElementById(IC_VIEW_PREFIX + instance.inputId);
         if (element && element.tagName == 'DIV') {
-            element.style.backgroundImage = "url('" + data + "')";
-        } else {
-            console.log('Image view not set');
+            if (data) {
+                element.style.backgroundImage = "url('" + data + "')";
+                updateImagePosition(element, instance.imageOptions.position);
+                updateImageSize(element, instance.imageOptions.position);
+                instance.addResizeImageEvents();
+                return;
+            }
+
+            element.style.backgroundImage = '';
+            instance.removeResizeImageEvents();
+            return;
         }
+
+        console.log('Image view not set');
     }
 
     function destroy(instanceName) {
@@ -192,7 +267,14 @@ window.ImageCropper = (function () {
         return {
             orientation: 1,
             originWidth: 0,
-            originHeight: 0
+            originHeight: 0,
+            position: {
+                x: 0,
+                y: 0,
+                zoom: 0,
+                width: 0,
+                height: 0
+            }
         };
     }
 
